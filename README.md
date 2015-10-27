@@ -1,2 +1,2 @@
-# delta-schedule
-ElasticSearch transient settings scheduler
+# sleepwalk
+Makes ElasticSearch do things overnight.
