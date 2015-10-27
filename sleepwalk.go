@@ -29,6 +29,7 @@ func init() {
 	flag.Parse()
 }
 
+
 func getSettings() (string, error) {
 	resp, err := http.Get(SleepwalkSettings.address+"/_cluster/settings")
 	if err != nil {
@@ -60,11 +61,10 @@ func putSettings(template *strings.Reader) (string, error) {
 	return string(resp), nil
 }
 
-func parseTemplate() ([]Setting, error) {
-	s := Setting{}
+func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
-	f, err := os.Open("template")
+	f, err := os.Open(template)
 	if err != nil {
 		return settings, err
 	}
@@ -76,18 +76,22 @@ func parseTemplate() ([]Setting, error) {
 		lines = append(lines, scanner.Text())
 	}
 
-	// Get value (setting) from the template.
-	s.Value = strings.NewReader(lines[1])
-	// Get start time.
-	hhmm := strings.Split(lines[0], ":")
-	s.StartHH, s.StartMM = hhmm[0], hhmm[1]
+	for i := 0; i < len(lines); i = i+2 {
+		s := Setting{}
+		// Get value (setting) from the template.
+		s.Value = strings.NewReader(lines[i+1])
+		// Get start time.
+		hhmm := strings.Split(lines[i], ":")
+		s.StartHH, s.StartMM = hhmm[0], hhmm[1]
 
-	settings = append(settings, s)
+		settings = append(settings, s)
+	}
+
 	return settings, nil
 }
 
-func main() {
-	settings, _ := parseTemplate()
+func applyTemplate() {
+	settings, _ := parseTemplate("template")
 
 	now := time.Now()
 	tz, _ := time.Now().Zone()
@@ -106,8 +110,14 @@ func main() {
 			log.Printf("Pushing settings: %s", resp)
 			cSettings, _ := getSettings()
 			log.Printf("Current settings: %s", cSettings)
-		} else {
-			log.Println("No settings to push")
 		}
+	}
+}
+
+func main() {
+	applyTemplate()
+	run := time.Tick(15 * time.Second)
+	for _ = range run {
+		applyTemplate()
 	}
 }

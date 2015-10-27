@@ -1,2 +1,4 @@
 08:00
 { "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 10 } }
+16:00
+{ "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 0 } }
