@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,14 +13,24 @@ import (
 	"strings"
 )
 
+var SleepwalkSettings struct {
+	address string
+}
 
+// An ElasticSearch cluster setting and timestamp describing
+// a start time for the setting to go into effect.
 type Setting struct {
 	StartHH, StartMM string
 	Value   *strings.Reader
 }
 
+func init() {
+	flag.StringVar(&SleepwalkSettings.address, "address", "http://localhost:9200", "ElasticSearch Address")
+	flag.Parse()
+}
+
 func getSettings() (string, error) {
-	resp, err := http.Get("http://localhost:9200/_cluster/settings")
+	resp, err := http.Get(SleepwalkSettings.address+"/_cluster/settings")
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +44,7 @@ func getSettings() (string, error) {
 func putSettings(template *strings.Reader) (string, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("PUT", "http://localhost:9200/_cluster/settings", template)
+	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", template)
 	if err != nil {
 		return "", err
 	}
