@@ -20,7 +20,7 @@ var SleepwalkSettings struct {
 // An ElasticSearch cluster setting and timestamp describing
 // a start time for the setting to go into effect.
 type Setting struct {
-	StartHH, StartMM string
+	StartHH, StartMM, EndHH, EndMM string
 	Value   *strings.Reader
 }
 
@@ -61,6 +61,18 @@ func putSettings(template *strings.Reader) (string, error) {
 	return string(resp), nil
 }
 
+func parseTsRange(tsrange string) (string, string, string, string) {
+	// Get 01:00 - 02:00 timestamp range.
+	r := strings.Split(tsrange, "-")
+	// Get start elements.
+	start := strings.Split(r[0], ":")
+	// Get end elements.
+	end := strings.Split(r[1], ":")
+
+	return start[0], start[1], end[0], end[1]
+}
+
+
 func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
@@ -81,8 +93,7 @@ func parseTemplate(template string) ([]Setting, error) {
 		// Get value (setting) from the template.
 		s.Value = strings.NewReader(lines[i+1])
 		// Get start time.
-		hhmm := strings.Split(lines[i], ":")
-		s.StartHH, s.StartMM = hhmm[0], hhmm[1]
+		s.StartHH, s.StartMM, s.EndHH, s.EndMM = parseTsRange(lines[i])
 
 		settings = append(settings, s)
 	}
@@ -90,22 +101,28 @@ func parseTemplate(template string) ([]Setting, error) {
 	return settings, nil
 }
 
+func getTs(hh, mm string, ref time.Time) time.Time {
+	tz, _ := time.Now().Zone()
+	tsString := fmt.Sprintf("%d-%d-%d %s:%s %s",
+		ref.Year(), ref.Month(), ref.Day(), hh, mm, tz)
+
+	ts, err := time.Parse("2006-01-02 15:04 MST", tsString)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return ts
+}
+
 func applyTemplate() {
 	settings, _ := parseTemplate("template")
-
 	now := time.Now()
-	tz, _ := time.Now().Zone()
 
 	for i := range settings {
-		ts := fmt.Sprintf("%d-%d-%d %s:%s %s",
-			now.Year(), now.Month(), now.Day(), settings[i].StartHH, settings[i].StartMM, tz)
+		start := getTs(settings[i].StartHH, settings[i].StartMM, now)
+		end := getTs(settings[i].EndHH, settings[i].EndMM, now)
 
-		target, err := time.Parse("2006-01-02 15:04 MST", ts)
-		if err != nil {
-			log.Println(err)
-		}
-
-		if now.After(target) {
+		if now.After(start) &&  now.Before (end) {
 			resp, _ := putSettings(settings[i].Value)
 			log.Printf("Pushing settings: %s", resp)
 			cSettings, _ := getSettings()
