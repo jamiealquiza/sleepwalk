@@ -16,6 +16,7 @@ import (
 var SleepwalkSettings struct {
 	address  string
 	interval int
+	templates string
 }
 
 // Template naming scheme.
@@ -31,6 +32,7 @@ type Setting struct {
 func init() {
 	flag.StringVar(&SleepwalkSettings.address, "address", "http://localhost:9200", "ElasticSearch Address")
 	flag.IntVar(&SleepwalkSettings.interval, "interval", 300, "Update interval in seconds")
+	flag.StringVar(&SleepwalkSettings.templates, "templates", "./templates", "Template path")
 	flag.Parse()
 }
 
