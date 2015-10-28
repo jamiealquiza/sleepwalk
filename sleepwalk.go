@@ -14,8 +14,8 @@ import (
 )
 
 var SleepwalkSettings struct {
-	address  string
-	interval int
+	address   string
+	interval  int
 	templates string
 }
 
@@ -84,10 +84,11 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 
 // parseTemplate reads a Sleepwalk settings template and returns an array of
 // Setting structs.
+// TODO: needs to validate templates. E.g. regex date match + try marshalling the json.
 func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
-	f, err := os.Open(SleepwalkSettings.templates+"/"+template)
+	f, err := os.Open(SleepwalkSettings.templates + "/" + template)
 	if err != nil {
 		return settings, fmt.Errorf("Template error: %s\n", err)
 	}
