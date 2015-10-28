@@ -144,6 +144,7 @@ func applyTemplate(template string) {
 	// were applied from this template.
 	applied := 0
 
+	// We have a bunch of Setting structs from our template.
 	for i := range settings {
 		start, _ := getTs(settings[i].StartHH, settings[i].StartMM, now)
 		end, _ := getTs(settings[i].EndHH, settings[i].EndMM, now)
@@ -154,8 +155,7 @@ func applyTemplate(template string) {
 				log.Println(err)
 			}
 
-			log.Printf("Pushing setting from template: %s. Current settings: %s\n",
-				template, cSettings)
+			log.Printf("Pushing setting from template: %s\n", template)
 
 			_, err = putSettings(settings[i].Value)
 			if err != nil {
@@ -166,8 +166,12 @@ func applyTemplate(template string) {
 			nSettings, err := getSettings()
 			if err != nil {
 				log.Println(err)
+			}
+
+			if cSettings != nSettings {
+				log.Printf("Settings changed from %s to %s\n", cSettings, nSettings)
 			} else {
-				log.Printf("New settings: %s", nSettings)
+				log.Printf("No settings changes")
 			}
 		}
 	}
