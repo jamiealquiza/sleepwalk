@@ -2,38 +2,40 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	//"encoding/json"
 	"os"
-	"time"
 	"strings"
+	"time"
 )
 
 var SleepwalkSettings struct {
-	address string
+	address  string
+	interval int
 }
 
 // An ElasticSearch cluster setting and timestamp describing
 // a start time for the setting to go into effect.
 type Setting struct {
 	StartHH, StartMM, EndHH, EndMM string
-	Value   *strings.Reader
+	Value                          *strings.Reader
 }
 
 func init() {
 	flag.StringVar(&SleepwalkSettings.address, "address", "http://localhost:9200", "ElasticSearch Address")
+	flag.IntVar(&SleepwalkSettings.interval, "interval", 300, "Update interval in seconds")
 	flag.Parse()
 }
 
 // getSettings fetches the current ElasticSearch cluster settings.
 func getSettings() (string, error) {
-	resp, err := http.Get(SleepwalkSettings.address+"/_cluster/settings")
+	resp, err := http.Get(SleepwalkSettings.address + "/_cluster/settings")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error getting settings: %s\n", err)
 	}
 
 	contents, _ := ioutil.ReadAll(resp.Body)
@@ -48,12 +50,12 @@ func putSettings(setting *strings.Reader) (string, error) {
 
 	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", setting)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Request error: %s\n", err)
 	}
 
 	r, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error pushing settings: %s\n", err)
 	}
 
 	resp, _ := ioutil.ReadAll(r.Body)
@@ -82,7 +84,7 @@ func parseTemplate(template string) ([]Setting, error) {
 
 	f, err := os.Open(template)
 	if err != nil {
-		return settings, err
+		return settings, fmt.Errorf("Template error: %s\n", err)
 	}
 
 	lines := []string{}
@@ -94,7 +96,7 @@ func parseTemplate(template string) ([]Setting, error) {
 
 	// No safeties yet. Assumes that the template is a perfectly formatted
 	// time range and associated setting in alternating lines.
-	for i := 0; i < len(lines); i = i+2 {
+	for i := 0; i < len(lines); i = i + 2 {
 		s := Setting{}
 		// Get value (the setting) from the template.
 		s.Value = strings.NewReader(lines[i+1])
@@ -109,17 +111,17 @@ func parseTemplate(template string) ([]Setting, error) {
 
 // getTs takes HH:MM pairs and a reference timestamp (for current date-time and zone)
 // and returns a formatted time.Time stamp.
-func getTs(hh, mm string, ref time.Time) time.Time {
+func getTs(hh, mm string, ref time.Time) (time.Time, error) {
 	tz, _ := time.Now().Zone()
 	tsString := fmt.Sprintf("%d-%d-%d %s:%s %s",
 		ref.Year(), ref.Month(), ref.Day(), hh, mm, tz)
 
 	ts, err := time.Parse("2006-01-02 15:04 MST", tsString)
 	if err != nil {
-		log.Println(err)
+		return ts, err
 	}
 
-	return ts
+	return ts, nil
 }
 
 // applyTemplate parses a template file and applies each setting.
@@ -128,15 +130,25 @@ func applyTemplate() {
 	now := time.Now()
 
 	for i := range settings {
-		start := getTs(settings[i].StartHH, settings[i].StartMM, now)
-		end := getTs(settings[i].EndHH, settings[i].EndMM, now)
+		start, _ := getTs(settings[i].StartHH, settings[i].StartMM, now)
+		end, _ := getTs(settings[i].EndHH, settings[i].EndMM, now)
 
-		if now.After(start) &&  now.Before (end) {
-			cSettings, _ := getSettings()
+		if now.After(start) && now.Before(end) {
+			cSettings, err := getSettings()
+			if err != nil {
+				log.Println(err)
+			}
+
 			log.Printf("Pushing settings. Current settings: %s\n", cSettings)
-			_, _ = putSettings(settings[i].Value)
-			nSettings, _ := getSettings()
-			if cSettings != nSettings {
+			_, err = putSettings(settings[i].Value)
+			if err != nil {
+				log.Println(err)
+			}
+
+			nSettings, err := getSettings()
+			if err != nil {
+				log.Println(err)
+			} else {
 				log.Printf("New settings: %s", nSettings)
 			}
 		}
@@ -146,7 +158,7 @@ func applyTemplate() {
 func main() {
 	log.Println("Sleepwalk Running")
 	applyTemplate()
-	run := time.Tick(15 * time.Second)
+	run := time.Tick(time.Duration(SleepwalkSettings.interval) * time.Second)
 	for _ = range run {
 		applyTemplate()
 	}
