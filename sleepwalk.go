@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	//"strconv"
 	"time"
 )
 
@@ -19,8 +20,11 @@ var SleepwalkSettings struct {
 	templates string
 }
 
-// Template naming scheme.
-var templateFileName *regexp.Regexp = regexp.MustCompile(".conf$")
+var (
+	// Template naming scheme.
+	templateFileName  *regexp.Regexp = regexp.MustCompile(".conf$")
+	templateDateRange *regexp.Regexp = regexp.MustCompile("[0-9]{2}")
+)
 
 // An ElasticSearch cluster setting and timestamp describing
 // a start time for the setting to go into effect.
@@ -40,7 +44,7 @@ func init() {
 func getSettings() (string, error) {
 	resp, err := http.Get(SleepwalkSettings.address + "/_cluster/settings")
 	if err != nil {
-		return "", fmt.Errorf("Error getting settings: %s\n", err)
+		return "", fmt.Errorf("Error getting settings: %s", err)
 	}
 
 	contents, _ := ioutil.ReadAll(resp.Body)
@@ -55,12 +59,12 @@ func putSettings(setting *strings.Reader) (string, error) {
 
 	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", setting)
 	if err != nil {
-		return "", fmt.Errorf("Request error: %s\n", err)
+		return "", fmt.Errorf("Request error: %s", err)
 	}
 
 	r, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("Error pushing settings: %s\n", err)
+		return "", fmt.Errorf("Error pushing settings: %s", err)
 	}
 
 	resp, _ := ioutil.ReadAll(r.Body)
@@ -82,6 +86,19 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 	return start[0], start[1], end[0], end[1]
 }
 
+func validateSetting(setting Setting, i int) (int, bool) {
+	// Validate start/end HH.
+	if ok := templateDateRange.MatchString(setting.StartHH) && 1 == 1; !ok {
+		return i + 1, false
+	}
+
+	if ok := templateDateRange.MatchString(setting.EndHH); !ok {
+		return i + 1, false
+	}
+
+	return i, true
+}
+
 // parseTemplate reads a Sleepwalk settings template and returns an array of
 // Setting structs.
 // TODO: needs to validate templates. E.g. regex date match + try marshalling the json.
@@ -90,7 +107,7 @@ func parseTemplate(template string) ([]Setting, error) {
 
 	f, err := os.Open(SleepwalkSettings.templates + "/" + template)
 	if err != nil {
-		return settings, fmt.Errorf("Template error: %s\n", err)
+		return settings, fmt.Errorf("Template error: %s", err)
 	}
 
 	lines := []string{}
@@ -109,7 +126,14 @@ func parseTemplate(template string) ([]Setting, error) {
 		// Get time range.
 		s.StartHH, s.StartMM, s.EndHH, s.EndMM = parseTsRange(lines[i])
 
-		settings = append(settings, s)
+		// Validate setting. We have to pass the index i we are on to
+		// determine the line the failed validation.
+		if line, valid := validateSetting(s, i); valid {
+			settings = append(settings, s)
+		} else {
+			return settings, fmt.Errorf("Template parsing error from %s:%d",
+				template, line)
+		}
 	}
 
 	return settings, nil
@@ -137,6 +161,7 @@ func applyTemplate(template string) {
 	settings, err := parseTemplate(template)
 	if err != nil {
 		log.Println(err)
+		os.Exit(1)
 	}
 
 	now := time.Now()
@@ -171,7 +196,7 @@ func applyTemplate(template string) {
 			if cSettings != nSettings {
 				log.Printf("Settings changed from %s to %s\n", cSettings, nSettings)
 			} else {
-				log.Printf("No settings changes")
+				log.Printf("No settings changed")
 			}
 		}
 	}
