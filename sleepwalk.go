@@ -132,15 +132,19 @@ func applyTemplate() {
 		end := getTs(settings[i].EndHH, settings[i].EndMM, now)
 
 		if now.After(start) &&  now.Before (end) {
-			resp, _ := putSettings(settings[i].Value)
-			log.Printf("Pushing settings: %s", resp)
 			cSettings, _ := getSettings()
-			log.Printf("Current settings: %s", cSettings)
+			log.Printf("Pushing settings. Current settings: %s\n", cSettings)
+			_, _ = putSettings(settings[i].Value)
+			nSettings, _ := getSettings()
+			if cSettings != nSettings {
+				log.Printf("New settings: %s", nSettings)
+			}
 		}
 	}
 }
 
 func main() {
+	log.Println("Sleepwalk Running")
 	applyTemplate()
 	run := time.Tick(15 * time.Second)
 	for _ = range run {
