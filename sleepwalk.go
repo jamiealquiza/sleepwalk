@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	//"encoding/json"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -17,6 +17,9 @@ var SleepwalkSettings struct {
 	address  string
 	interval int
 }
+
+// Template naming scheme.
+var templateFileName *regexp.Regexp = regexp.MustCompile(".conf$")
 
 // An ElasticSearch cluster setting and timestamp describing
 // a start time for the setting to go into effect.
@@ -125,9 +128,14 @@ func getTs(hh, mm string, ref time.Time) (time.Time, error) {
 }
 
 // applyTemplate parses a template file and applies each setting.
-func applyTemplate() {
-	settings, _ := parseTemplate("template")
+func applyTemplate(template string) {
+	log.Printf("Reading template: %s\n", template)
+
+	settings, _ := parseTemplate(template)
 	now := time.Now()
+	// Count of how many settings
+	// were applied from this template.
+	applied := 0
 
 	for i := range settings {
 		start, _ := getTs(settings[i].StartHH, settings[i].StartMM, now)
@@ -139,11 +147,14 @@ func applyTemplate() {
 				log.Println(err)
 			}
 
-			log.Printf("Pushing settings. Current settings: %s\n", cSettings)
+			log.Printf("Pushing setting from template: %s. Current settings: %s\n",
+				template, cSettings)
+
 			_, err = putSettings(settings[i].Value)
 			if err != nil {
 				log.Println(err)
 			}
+			applied++
 
 			nSettings, err := getSettings()
 			if err != nil {
@@ -153,13 +164,37 @@ func applyTemplate() {
 			}
 		}
 	}
+
+	if applied < 1 {
+		log.Printf("No settings to apply from: %s\n", template)
+	}
+}
+
+func getTemplates(path string) []string {
+	templates := []string{}
+	fs, _ := ioutil.ReadDir(path)
+
+	for _, f := range fs {
+		if templateFileName.MatchString(f.Name()) {
+			templates = append(templates, f.Name())
+		}
+	}
+
+	return templates
 }
 
 func main() {
 	log.Println("Sleepwalk Running")
-	applyTemplate()
+
+	templates := getTemplates("./templates")
+	for _, t := range templates {
+		applyTemplate(t)
+	}
+
 	run := time.Tick(time.Duration(SleepwalkSettings.interval) * time.Second)
 	for _ = range run {
-		applyTemplate()
+		for _, t := range templates {
+			applyTemplate(t)
+		}
 	}
 }
