@@ -87,12 +87,16 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 }
 
 func validateSetting(setting Setting, i int) (int, bool) {
-	// Validate start/end HH.
-	if ok := templateDateRange.MatchString(setting.StartHH) && 1 == 1; !ok {
+	// Validate start/end HH/MM.
+	// Needs to do something smarter than just a /[0-9]{2}/ match.
+	switch {
+	case !templateDateRange.MatchString(setting.StartHH):
 		return i + 1, false
-	}
-
-	if ok := templateDateRange.MatchString(setting.EndHH); !ok {
+	case !templateDateRange.MatchString(setting.StartMM):
+		return i + 1, false
+	case !templateDateRange.MatchString(setting.EndHH):
+		return i + 1, false
+	case !templateDateRange.MatchString(setting.EndMM):
 		return i + 1, false
 	}
 
