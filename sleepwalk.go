@@ -29,7 +29,7 @@ func init() {
 	flag.Parse()
 }
 
-
+// getSettings fetches the current ElasticSearch cluster settings.
 func getSettings() (string, error) {
 	resp, err := http.Get(SleepwalkSettings.address+"/_cluster/settings")
 	if err != nil {
@@ -42,10 +42,11 @@ func getSettings() (string, error) {
 	return string(contents), nil
 }
 
-func putSettings(template *strings.Reader) (string, error) {
+// putSettings pushes a cluster setting to ElasticSearch.
+func putSettings(setting *strings.Reader) (string, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", template)
+	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", setting)
 	if err != nil {
 		return "", err
 	}
@@ -61,8 +62,10 @@ func putSettings(template *strings.Reader) (string, error) {
 	return string(resp), nil
 }
 
+// parseTsRange takes a 09:30-15:30 format start / end time range
+// and reteurns the start HH, start MM, end HH, end MM elements.
 func parseTsRange(tsrange string) (string, string, string, string) {
-	// Get 01:00 - 02:00 timestamp range.
+	// Break start / stop times.
 	r := strings.Split(tsrange, "-")
 	// Get start elements.
 	start := strings.Split(r[0], ":")
@@ -72,7 +75,8 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 	return start[0], start[1], end[0], end[1]
 }
 
-
+// parseTemplate reads a Sleepwalk settings template and returns an array of
+// Setting structs.
 func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
@@ -88,11 +92,13 @@ func parseTemplate(template string) ([]Setting, error) {
 		lines = append(lines, scanner.Text())
 	}
 
+	// No safeties yet. Assumes that the template is a perfectly formatted
+	// time range and associated setting in alternating lines.
 	for i := 0; i < len(lines); i = i+2 {
 		s := Setting{}
-		// Get value (setting) from the template.
+		// Get value (the setting) from the template.
 		s.Value = strings.NewReader(lines[i+1])
-		// Get start time.
+		// Get time range.
 		s.StartHH, s.StartMM, s.EndHH, s.EndMM = parseTsRange(lines[i])
 
 		settings = append(settings, s)
@@ -101,6 +107,8 @@ func parseTemplate(template string) ([]Setting, error) {
 	return settings, nil
 }
 
+// getTs takes HH:MM pairs and a reference timestamp (for current date-time and zone)
+// and returns a formatted time.Time stamp.
 func getTs(hh, mm string, ref time.Time) time.Time {
 	tz, _ := time.Now().Zone()
 	tsString := fmt.Sprintf("%d-%d-%d %s:%s %s",
@@ -114,6 +122,7 @@ func getTs(hh, mm string, ref time.Time) time.Time {
 	return ts
 }
 
+// applyTemplate parses a template file and applies each setting.
 func applyTemplate() {
 	settings, _ := parseTemplate("template")
 	now := time.Now()
