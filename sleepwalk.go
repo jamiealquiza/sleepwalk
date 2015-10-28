@@ -87,7 +87,7 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
-	f, err := os.Open(template)
+	f, err := os.Open(SleepwalkSettings.templates+"/"+template)
 	if err != nil {
 		return settings, fmt.Errorf("Template error: %s\n", err)
 	}
@@ -133,7 +133,11 @@ func getTs(hh, mm string, ref time.Time) (time.Time, error) {
 func applyTemplate(template string) {
 	log.Printf("Reading template: %s\n", template)
 
-	settings, _ := parseTemplate(template)
+	settings, err := parseTemplate(template)
+	if err != nil {
+		log.Println(err)
+	}
+
 	now := time.Now()
 	// Count of how many settings
 	// were applied from this template.
@@ -172,6 +176,8 @@ func applyTemplate(template string) {
 	}
 }
 
+// getTemplates returns a list of template files
+// from the template path.
 func getTemplates(path string) []string {
 	templates := []string{}
 	fs, _ := ioutil.ReadDir(path)
