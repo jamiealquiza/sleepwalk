@@ -1,5 +1,17 @@
 # sleepwalk
-Makes ElasticSearch do things overnight.
+
+Sleepwalk is a tool to schedule ElasticSearch settings using a simple template system consisting of time range and setting pairs:
+
+```
+08:00-16:00
+{ "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 5 } }
+16:00-23:00
+{ "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 0 } }
+```
+
+A single template can hold any number of time and setting pairs, typically with each template representing a related configuration bundle (e.g. only allow 3 shard rebalances during the day, but 10 over night).
+
+Templates (file formatted accordingly and ending in .conf) are picked up from the specified `-templates` directory on start. Every `-interval` seconds, each template is validated and any settings that are applicable according to the current time are applied in top-down order.
 
 ```
 Usage of ./sleepwalk:

@@ -86,6 +86,9 @@ func parseTsRange(tsrange string) (string, string, string, string) {
 	return start[0], start[1], end[0], end[1]
 }
 
+// validateSettings does a basic validation of each time range and
+// setting pair from a template. It ensures that 00:00 times were received
+// and that the setting string is at least valid json.
 func validateSetting(setting Setting, i int) (int, bool) {
 	// Validate start/end HH/MM.
 	// Needs to do something smarter than just a /[0-9]{2}/ match.
@@ -100,7 +103,7 @@ func validateSetting(setting Setting, i int) (int, bool) {
 		return i + 1, false
 	}
 
-	// Validate setting.Value as at least being valid JSON.
+	// Validate setting.Value.
 	settingValue, _ := ioutil.ReadAll(setting.Value)
 	js := make(map[string]interface{})
 	if err := json.Unmarshal(settingValue, &js); err != nil {
