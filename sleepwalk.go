@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	//"strconv"
 	"time"
 )
 
@@ -100,12 +100,18 @@ func validateSetting(setting Setting, i int) (int, bool) {
 		return i + 1, false
 	}
 
+	// Validate setting.Value as at least being valid JSON.
+	settingValue, _ := ioutil.ReadAll(setting.Value)
+	js := make(map[string]interface{})
+	if err := json.Unmarshal(settingValue, &js); err != nil {
+		return i + 2, false
+	}
+
 	return i, true
 }
 
 // parseTemplate reads a Sleepwalk settings template and returns an array of
 // Setting structs.
-// TODO: needs to validate templates. E.g. regex date match + try marshalling the json.
 func parseTemplate(template string) ([]Setting, error) {
 	settings := []Setting{}
 
