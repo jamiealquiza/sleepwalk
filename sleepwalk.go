@@ -185,6 +185,20 @@ func applyTemplate(template string) {
 		start, _ := getTs(settings[i].StartHH, settings[i].StartMM, now)
 		end, _ := getTs(settings[i].EndHH, settings[i].EndMM, now)
 
+		// Check if the time range is intended to span overnight and
+		// reference more than one day.
+		// Is end an earlier time than start? If so, we span day boundaries.
+		if start.After(end) {
+			switch {
+			// If now is before end, start needs to reference yesterday.
+			case now.Before(end):
+				start = start.AddDate(0, 0, -1)
+			// Otherwise if now is after end, end needs to reference tomorrow.
+			default:
+				end = end.AddDate(0, 0, 1)
+			}
+		}
+
 		if now.After(start) && now.Before(end) {
 			cSettings, err := getSettings()
 			if err != nil {
