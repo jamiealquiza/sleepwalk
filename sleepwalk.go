@@ -30,7 +30,7 @@ var (
 // a start time for the setting to go into effect.
 type Setting struct {
 	StartHH, StartMM, EndHH, EndMM string
-	Value                          *strings.Reader
+	Value                          string
 }
 
 func init() {
@@ -54,10 +54,10 @@ func getSettings() (string, error) {
 }
 
 // putSettings pushes a cluster setting to ElasticSearch.
-func putSettings(setting *strings.Reader) (string, error) {
+func putSettings(setting string) (string, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", setting)
+	req, err := http.NewRequest("PUT", SleepwalkSettings.address+"/_cluster/settings", strings.NewReader(setting))
 	if err != nil {
 		return "", fmt.Errorf("Request error: %s", err)
 	}
@@ -103,10 +103,8 @@ func validateSetting(setting Setting, i int) (int, bool) {
 		return i + 1, false
 	}
 
-	// Validate setting.Value.
-	settingValue, _ := ioutil.ReadAll(setting.Value)
-	js := make(map[string]interface{})
-	if err := json.Unmarshal(settingValue, &js); err != nil {
+	null := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(setting.Value), &null); err != nil {
 		return i + 2, false
 	}
 
@@ -135,7 +133,7 @@ func parseTemplate(template string) ([]Setting, error) {
 	for i := 0; i < len(lines); i = i + 2 {
 		s := Setting{}
 		// Get value (the setting) from the template.
-		s.Value = strings.NewReader(lines[i+1])
+		s.Value = lines[i+1]
 		// Get time range.
 		s.StartHH, s.StartMM, s.EndHH, s.EndMM = parseTsRange(lines[i])
 
