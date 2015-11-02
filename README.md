@@ -4,9 +4,9 @@ Sleepwalk is a tool to schedule ElasticSearch settings using a simple template s
 
 ```
 08:00-16:00
-{ "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 3 } }
+{ "transient": { "cluster.routing.allocation.cluster_concurrent_rebalance": 3 } }
 16:00-08:00
-{ "transient": { "cluster.routing.allocation.node_initial_primaries_recoveries": 15 } }
+{ "transient": { "cluster.routing.allocation.cluster_concurrent_rebalance": 15 } }
 ```
 
 A single template can hold any number of time and setting pairs, typically with each template representing a related configuration bundle (e.g. only allow 3 shard rebalances during the day, but 15 over night).
@@ -29,7 +29,7 @@ Usage of ./sleepwalk:
 
 ```
 2015/10/28 10:42:31 Sleepwalk Running
-2015/10/28 10:42:31 Reading template: recoveries.conf
-2015/10/28 10:42:31 Pushing setting from template: recoveries.conf. Current settings: {"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"node_initial_primaries_recoveries":"5"}}}}}
-2015/10/28 10:42:31 New settings: {"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"node_initial_primaries_recoveries":"0"}}}}}
+2015/10/28 10:42:31 Reading template: rebalance.conf
+2015/10/28 10:42:31 Pushing setting from template: rebalance.conf. Current settings: {"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"cluster_concurrent_rebalance":"0"}}}}}
+2015/10/28 10:42:31 New settings: {"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"cluster_concurrent_rebalance":"3"}}}}}
 ```
