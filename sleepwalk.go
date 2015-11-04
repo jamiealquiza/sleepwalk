@@ -177,7 +177,7 @@ func parseTemplate(template string) ([]Setting, error) {
 // and returns a formatted time.Time stamp.
 func getTs(hh, mm string, ref time.Time) (time.Time, error) {
 	tz, _ := time.Now().Zone()
-	tsString := fmt.Sprintf("%d-%d-%d %s:%s %s",
+	tsString := fmt.Sprintf("%d-%02d-%02d %s:%s %s",
 		ref.Year(), ref.Month(), ref.Day(), hh, mm, tz)
 
 	ts, err := time.Parse("2006-01-02 15:04 MST", tsString)
@@ -205,6 +205,8 @@ func applyTemplate(template string) {
 
 	// We have a bunch of Setting structs from our template.
 	for i := range settings {
+		// Should probably move this into parseTemplate() and
+		// just have start / end fields in the setting struct.
 		start, _ := getTs(settings[i].StartHH, settings[i].StartMM, now)
 		end, _ := getTs(settings[i].EndHH, settings[i].EndMM, now)
 
