@@ -274,7 +274,7 @@ func getTemplates(path string) []string {
 func main() {
 	log.Println("Sleepwalk Running")
 
-	templates := getTemplates("./templates")
+	templates := getTemplates(SleepwalkSettings.templates)
 	for _, t := range templates {
 		applyTemplate(t)
 	}
