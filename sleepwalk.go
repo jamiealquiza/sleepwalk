@@ -143,6 +143,7 @@ func parseTemplate(template string) ([]Setting, error) {
 	if err != nil {
 		return settings, fmt.Errorf("Template error: %s", err)
 	}
+	defer f.Close()
 
 	lines := []string{}
 	scanner := bufio.NewScanner(f)
